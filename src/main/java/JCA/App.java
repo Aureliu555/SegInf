@@ -1,6 +1,9 @@
 package JCA;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -14,14 +17,23 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.RSAPublicKeySpec;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.KeyFactory;
+import java.security.MessageDigest;
 import java.security.spec.InvalidKeySpecException;
 import java.security.NoSuchAlgorithmException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import JCA.Exercise5.*;
+
 
 public class App {
-    public static void encipher(String file, String cer) throws FileNotFoundException, CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException {
+    public static void encipher(String file, String cer) throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, IOException, IllegalBlockSizeException, BadPaddingException {
         //----------------------------------------- Certificate and Public Key ------------------------------------------------------------
         FileInputStream in = new FileInputStream(cer);
+        System.out.print(in);
 
         // Gera objeto para certificados X.509.
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
@@ -36,56 +48,43 @@ public class App {
         // Obtém a chave pública do certificado.
         PublicKey pk = certificate.getPublicKey();
 
-        //---------------------------------------------- Key Encipher Process with Public Key --------------------------------------------------------
+               
+        byte[] msg = Exercise5.messageFromPath("src/main/files/"+file);
 
-        // Gera os bytes para o vetor de bytes correspondente a chave
-        byte[] keyBytes = {0x01, 0x23, 0x45, 0x67, (byte)0x89, (byte)0xab, (byte)0xcd, (byte)0xef, 0x01, 0x23, 0x45, 0x67, (byte)0x89, (byte)0xab, (byte)0xcd, (byte)0xef};
+        hashCalculator(msg);
 
-        // Gera chave a partir do vetor de bytes (valor fixo, não aleatório)
-        SecretKey key = new SecretKeySpec(keyBytes, "AES");
-        System.out.println("key:" + key);
+        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
 
-        // Gera o objeto da cifra simetrica
-        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+        SecureRandom secRandom = new SecureRandom();
+		
+		keyGen.init(secRandom);
 
-        // Associa a chave key a cifra
-        cipher.init(cipher.ENCRYPT_MODE, key);
+		SecretKey symKey = keyGen.generateKey();   
 
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+  
+        cipher.init( Cipher.WRAP_MODE, pk );
 
-        //------------------------------------------------ File Encipher Process -----------------------------------------------------
-        //file encipher process
+        byte[] encodedKey = cipher.wrap( symKey );
 
+        byte[] bytes = cipher.doFinal(msg);
 
-        //----------------------------------------------- Generate Ehe Enciphered Files ----------------------------------------------
-        // Converte o objeto pk para RSAPublicKey.
-        KeyFactory factory = KeyFactory.getInstance("RSA");
-        RSAPublicKeySpec pkRSA = factory.getKeySpec(pk, RSAPublicKeySpec.class);
+        Path path = Paths.get("src/main/files");
 
-        // Mostra informações da chave pública:
-        System.out.println("Algoritmo da chave pública: " + pk.getAlgorithm());
-        System.out.print("Chave pública: ");
-        prettyPrint(pk.getEncoded());
-        System.out.println("Expoente (BigInt): " + pkRSA.getPublicExponent());
-        System.out.println("Modulus (BigInt): " + pkRSA.getModulus());
+        Files.write(path, encodedKey);
+        Files.write(path, bytes);
 
-        // Alguns exemplos de acesso aos campos do certificado:
-        System.out.println("Tipo: " + certificate.getType());
-        System.out.println("Versão: " + certificate.getVersion());
-        System.out.println("Algoritmo de assinatura: " + certificate.getSigAlgName());
-        System.out.println("Período: " + certificate.getNotBefore() + " a " + certificate.getNotAfter());
-        System.out.print("Assinatura: ");
-        prettyPrint(certificate.getSignature());
-
-        // Verifica a validade do período do certificado.
-        certificate.checkValidity();
-        System.out.println("Certificado válido (período de validade)");
     }
 
-    //public static void enc()
-    public static void decipher(){
-        System.out.println("Decipher");
+
+    public static void hashCalculator(byte[] file) throws NoSuchAlgorithmException, IOException {
+        MessageDigest md = MessageDigest.getInstance("AES");
+        md.update(file);
+        byte[] h = md.digest();
+        prettyPrint(h);
     }
-    public static void main(String[] args) throws FileNotFoundException, CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException {
+
+    public static void main(String[] args) throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException {
         String r = new Scanner(System.in).nextLine();
 
         while (!Objects.equals(r, "exit")){
@@ -97,13 +96,14 @@ public class App {
             }
 
             switch (l[1]) {
-                case "-dec" -> decipher();
+                case "-dec" -> System.out.print("fail");//decipher();
                 case "-enc" -> encipher("", "");
                 default -> System.out.println("Insert a valid command.");
             }
 
             r = new Scanner(System.in).nextLine();
         }
+
     }
     private static void prettyPrint(byte[] tag) {
         for (byte b: tag) {

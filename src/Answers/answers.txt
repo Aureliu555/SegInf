@@ -33,18 +33,22 @@ Questão
 	
 
 	2.
-		Um ataque deste tipo iria ser fatal para a assinatura, visto que caso o atacante alterasse a mensagem, como o hash gerado da mensagem enviada será igual ao hash gerado na verificação (pós alteração da mensagem) essa iria passar despercibida no processo de verificação.
+		Caso seja verificado a vulnerabilidade descrita no enunciado, num processo inicial de assinatura da mensagem não iriam
+	ser verifcadas quaisquer problemas uma vez que há de ser aplicada a função hash MD5 (vulnerável), a qual irá ser feita a 
+	assinatura desta mensagem; e numa fase posterior, onde poderá ocorrer uma interseção por parte de um agente externo, o mesmo 
+	poderá com facilidade descodificar e fazer a leitura da mensagem, mas não irá conseguir modificar a mesma pois caso isso aconteça, 
+	no processo de verificação iria ser tido como inválido já que não corresponderia ao esperado.
 
 4.
 	1.
-		Uma vez que para a verificação da assinatura é necessário a chave pública do emissor, isso implicaria sempre a chave pública da autridade de certificação acima, ou seja, 	isso aconteceria, na teoria, em todos os caso com a exceção dos certificados auto-assinados (raízes de confiança)
+		Uma vez que para a verificação da assinatura é necessário a chave pública do emissor e não do recetor da mensagem, no caso
+	do certificado folha, não é necessária a chave pública; ou o certificado não ser legítimo, isto é não ter uma raíz de confiança. 
 		
 	2.	
 		O principal objetivo do certificado X.509 não é a proteção contra a leitura da mensagem, mas sim de garantir que a mesma não seja
 	interceptada por um agente malicioso e alterada, não é justificado o uso do esquema MAC, uma vez que este último usa necessariamente
 	um canal seguro para poder enviar o algoritmo de descondificação da mensagem, da chave pública neste caso. Pois a certificação de que
 	não houve alteração da chave pública é garantida pela assinatura digital sem ser necessário a utilização de qualquer canal seguro.
-		A utilização do esquema MAC destruiria o conceito da utilização do certificado digital que defende que apenas a autoridade de certificação teria conhecimento da chave 	utilizada para criar a assinatura.
 	
 	3.
 		Um ficheiro .pfx inclui as chaves pública e privada para o certificado associado, podendo pode ser usado para 

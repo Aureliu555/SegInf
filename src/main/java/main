@@ -1,0 +1,4 @@
+public static void main(String[] args){
+    FileInputStream in = new FileInputStream(cer);
+    System.out.print(in);
+}
