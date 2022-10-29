@@ -24,7 +24,7 @@ import org.apache.commons.codec.binary.Base64OutputStream;
 
 
 public class Exercise6 {
-    public static void main(String[] args) throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException, KeyStoreException, InvalidAlgorithmParameterException, UnrecoverableKeyException {
+    public static void main(String[] args) throws CertificateException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException, KeyStoreException, InvalidAlgorithmParameterException, UnrecoverableKeyException {
         app();
     }
 
