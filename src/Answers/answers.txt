@@ -33,11 +33,7 @@ Questão
 	
 
 	2.
-		Caso seja verificado a vulnerabilidade descrita no enunciado, num processo inicial de assinatura da mensagem não iriam
-	ser verifcadas quaisquer problemas uma vez que há de ser aplicada a função hash MD5 (vulnerável), a qual irá ser feita a 
-	assinatura desta mensagem; e numa fase posterior, onde poderá ocorrer uma interseção por parte de um agente externo, o mesmo 
-	poderá com facilidade descodificar e fazer a leitura da mensagem, mas não irá conseguir modificar a mesma pois caso isso aconteça, 
-	no processo de verificação iria ser tido como inválido já que não corresponderia ao esperado.
+		Um ataque deste tipo iria ser fatal para a assinatura, visto que caso o atacante alterasse a mensagem, como o hash gerado da mensagem enviada será igual ao hash gerado na verificação (pós alteração da mensagem) essa iria passar despercibida no processo de verificação.
 
 4.
 	1.
