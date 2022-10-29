@@ -10,14 +10,9 @@ import javax.crypto.spec.IvParameterSpec;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.security.*;
-import java.util.Enumeration;
-import java.util.Objects;
-import java.util.Scanner;
+import java.security.cert.*;
+import java.util.*;
 import java.io.FileInputStream;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
-import java.security.spec.InvalidKeySpecException;
 import java.io.IOException;
 
 import org.apache.commons.codec.binary.Base64InputStream;
@@ -25,14 +20,14 @@ import org.apache.commons.codec.binary.Base64OutputStream;
 
 
 public class Exercise6 {
-    public static void main(String[] args) throws CertificateException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException, KeyStoreException, InvalidAlgorithmParameterException, UnrecoverableKeyException {
+    public static void main(String[] args) throws CertificateException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException, KeyStoreException, InvalidAlgorithmParameterException, UnrecoverableKeyException, CertPathValidatorException {
         app();
     }
 
     public static String pass = "changeit";
     public static String rootPath = "src/main/files/";
 
-    public static void app() throws KeyStoreException, IOException, InvalidAlgorithmParameterException, UnrecoverableKeyException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, CertificateException {
+    public static void app() throws KeyStoreException, IOException, InvalidAlgorithmParameterException, UnrecoverableKeyException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, CertificateException, CertPathValidatorException {
         String r = printAndReadOption();
 
         while (!Objects.equals(r, "exit")){
@@ -63,17 +58,15 @@ public class Exercise6 {
     }
 
     public static String printAndReadOption() {
-        System.out.println("\n<message> <.cer> -enc\n<.pfx> -dec\nexit\n");
+        System.out.println("\nEncipher: <file> <.cer> -enc\nDecipher: <.pfx> -dec\nExit App: exit\n");
         return new Scanner(System.in).nextLine();
     }
 
-    public static void encipher(String file, String cer) throws CertificateException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IOException, IllegalBlockSizeException, BadPaddingException {
+    public static void encipher(String file, String cer) throws CertificateException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IOException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException, CertPathValidatorException {
         //Certificate and Public Key
-        FileInputStream in = new FileInputStream(cer);
+        String[] certificates = { cer, "CA1-int.cer", "CA1.cer" };
 
-        CertificateFactory cf = CertificateFactory.getInstance("X.509");
-
-        X509Certificate certificate = (X509Certificate) cf.generateCertificate(in);
+        X509Certificate certificate = validateCertificate(certificates);
 
         // Verifica a validade do período do certificado.
         certificate.checkValidity();
@@ -96,9 +89,40 @@ public class Exercise6 {
         byte[] bytes = cipher.doFinal(msg);
         byte[] iv = cipher.getIV();
 
-        createFile("key.txt", encodedKey, true);
-        createFile("message.txt", bytes, true);
-        createFile("iv.txt", iv, true);
+        createFile("ciphered_key.txt", encodedKey, true);
+        createFile("ciphered_message.txt", bytes, true);
+        createFile("ciphered_iv.txt", iv, true);
+    }
+
+    public static X509Certificate validateCertificate(String[] certificates) throws NoSuchAlgorithmException, CertificateException, FileNotFoundException, InvalidAlgorithmParameterException, CertPathValidatorException {
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+
+        FileInputStream in = new FileInputStream(certificates[0]);
+
+        X509Certificate certificate = (X509Certificate) cf.generateCertificate(in);
+
+        //Certificate validation
+        List<X509Certificate> myCertificates = new ArrayList<>();
+        myCertificates.add(certificate);
+
+        FileInputStream inInt = new FileInputStream("src/main/certificates-and-keys/cert-int/"+ certificates[1]);
+        FileInputStream inAnchor = new FileInputStream("src/main/certificates-and-keys/trust-anchors/"+ certificates[2]);
+
+        X509Certificate certInt = (X509Certificate) cf.generateCertificate(inInt);
+        X509Certificate trust = (X509Certificate) cf.generateCertificate(inAnchor);
+
+        myCertificates.add(certInt);
+
+        CertPath cp = cf.generateCertPath(myCertificates);
+        //Trust anchor validation
+        TrustAnchor anchor = new TrustAnchor(trust, null);
+        PKIXParameters parameters = new PKIXParameters(Collections.singleton(anchor));
+        parameters.setRevocationEnabled(false);
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX");
+        PKIXCertPathValidatorResult result = (PKIXCertPathValidatorResult) cpv.validate(cp, parameters);
+        System.out.println("The certificate was successfully verified");
+
+        return certificate;
     }
 
     public static SecretKey getSecretKey() throws NoSuchAlgorithmException {
