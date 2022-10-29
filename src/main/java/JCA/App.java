@@ -30,8 +30,46 @@ import org.apache.commons.codec.binary.Base64OutputStream;
 
 
 public class App {
+    public static void main(String[] args) throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException, KeyStoreException, InvalidAlgorithmParameterException, UnrecoverableKeyException {
+        app();
+    }
+
+    public static void app() throws KeyStoreException, IOException, InvalidAlgorithmParameterException, UnrecoverableKeyException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, CertificateException {
+        options();
+        String r = new Scanner(System.in).nextLine();
+
+        while (!Objects.equals(r, "exit")){
+            String[] l = r.split(" ");
+
+            if(l.length == 1 || l.length > 3 ) {
+                System.out.println("Insert a valid command");
+                options();
+                r = new Scanner(System.in).nextLine();
+                continue;
+            }
+
+            switch (l[l.length-1]) {
+                case "-dec" -> {
+                    KeyStore ks =  KeyStore.getInstance("PKCS12");
+                    ks.load(new FileInputStream("src/main/files/"+ l[0]),"changeit".toCharArray());
+                    decipher("message.txt", "key.txt", ks, "iv.txt");
+                }
+                case "-enc" -> {
+                    encipher(l[0], "src/main/files/" + l[1]);
+                }
+                default -> System.out.println("Insert a valid command");
+            }
+
+            options();
+            r = new Scanner(System.in).nextLine();
+        }
+    }
+    public static void options() {
+        System.out.println("\n<message><.cer>-enc\n<.pfx>-dec\nexit\n");
+    }
+
     public static void encipher(String file, String cer) throws CertificateException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IOException, IllegalBlockSizeException, BadPaddingException {
-        //----------------------------------------- Certificate and Public Key ------------------------------------------------------------
+        //Certificate and Public Key
         FileInputStream in = new FileInputStream(cer);
 
         // Gera objeto para certificados X.509.
@@ -46,7 +84,6 @@ public class App {
         // Obtém a chave pública do certificado.
         PublicKey pk = certificate.getPublicKey();
 
-               
         byte[] msg = Exercise5.messageFromPath("src/main/files/" + file);
 
         //hashCalculator(msg);
@@ -54,10 +91,10 @@ public class App {
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
 
         SecureRandom secRandom = new SecureRandom();
-		
-		keyGen.init(secRandom);
 
-		SecretKey symKey = keyGen.generateKey();   
+        keyGen.init(secRandom);
+
+        SecretKey symKey = keyGen.generateKey();
 
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 
@@ -107,13 +144,9 @@ public class App {
         //Certificate creation
         Enumeration<String> entries = ks.aliases();
         String alias = entries.nextElement();
-        X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
 
-        //Key pair
-        PublicKey  publicKey = cert.getPublicKey();
         PrivateKey privateKey = (PrivateKey) ks.getKey(alias, "changeit".toCharArray());
 
-        //
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.UNWRAP_MODE, privateKey);
 
@@ -129,38 +162,4 @@ public class App {
 
     }
 
-    public static void hashCalculator(byte[] file) throws NoSuchAlgorithmException {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        md.update(file);
-        md.digest();
-        //prettyPrint(h);
-    }
-
-    public static void main(String[] args) throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException, KeyStoreException, InvalidAlgorithmParameterException, UnrecoverableKeyException {
-        String r = new Scanner(System.in).nextLine();
-
-        while (!Objects.equals(r, "exit")){
-            String[] l = r.split(" ");
-
-            if(l.length == 1) {
-                System.out.println("Invalid arguments");
-                break;
-            }
-
-            switch (l[2]) {
-                case "-dec" -> {
-                    KeyStore ks =  KeyStore.getInstance("PKCS12");
-                    ks.load(new FileInputStream("src/main/files/"+ "Alice_1.pfx"),"changeit".toCharArray());
-                    decipher("message.txt", "key.txt", ks, "iv.txt");
-                }
-                case "-enc" -> {
-                    encipher(l[0], "src/main/files/" + l[1]);
-                }
-                default -> System.out.println("Insert a valid command.");
-            }
-
-            r = new Scanner(System.in).nextLine();
-        }
-
-    }
 }
