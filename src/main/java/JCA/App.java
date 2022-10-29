@@ -6,8 +6,11 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.security.InvalidKeyException;
+import java.io.FileOutputStream;
+import java.security.*;
+import java.util.Enumeration;
 import java.util.Objects;
 import java.util.Scanner;
 import java.io.FileInputStream;
@@ -16,24 +19,20 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.RSAPublicKeySpec;
-import java.security.PublicKey;
-import java.security.SecureRandom;
-import java.security.KeyFactory;
-import java.security.MessageDigest;
 import java.security.spec.InvalidKeySpecException;
-import java.security.NoSuchAlgorithmException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import JCA.Exercise5.*;
+import org.apache.commons.codec.binary.Base64InputStream;
+import org.apache.commons.codec.binary.Base64OutputStream;
 
 
 public class App {
-    public static void encipher(String file, String cer) throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, IOException, IllegalBlockSizeException, BadPaddingException {
+    public static void encipher(String file, String cer) throws CertificateException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IOException, IllegalBlockSizeException, BadPaddingException {
         //----------------------------------------- Certificate and Public Key ------------------------------------------------------------
         FileInputStream in = new FileInputStream(cer);
-        System.out.print(in);
 
         // Gera objeto para certificados X.509.
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
@@ -43,15 +42,14 @@ public class App {
 
         // Verifica a validade do período do certificado.
         certificate.checkValidity();
-        System.out.println("Certificado válido (período de validade)");
 
         // Obtém a chave pública do certificado.
         PublicKey pk = certificate.getPublicKey();
 
                
-        byte[] msg = Exercise5.messageFromPath("src/main/files/"+file);
+        byte[] msg = Exercise5.messageFromPath("src/main/files/" + file);
 
-        hashCalculator(msg);
+        //hashCalculator(msg);
 
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
 
@@ -62,53 +60,104 @@ public class App {
 		SecretKey symKey = keyGen.generateKey();   
 
         Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-  
-        cipher.init( Cipher.WRAP_MODE, pk );
 
-        byte[] encodedKey = cipher.wrap( symKey );
+        cipher.init( Cipher.WRAP_MODE, symKey);
+
+        byte[] encodedKey = cipher.wrap( pk );
+
+        cipher.init(Cipher.ENCRYPT_MODE, symKey);
 
         byte[] bytes = cipher.doFinal(msg);
 
-        Path path = Paths.get("src/main/files");
+        //ciphered symmetric key
+        FileOutputStream baseOut = new FileOutputStream("src/main/files/key.txt");
+        Base64OutputStream out = new Base64OutputStream(baseOut);
+        out.write(encodedKey);
+        out.close();
 
-        Files.write(path, encodedKey);
-        Files.write(path, bytes);
+        //ciphered message
+        baseOut = new FileOutputStream("src/main/files/message.txt");
+        out = new Base64OutputStream(baseOut);
+        out.write(bytes);
+        out.close();
+
+        //IV generator
+        baseOut = new FileOutputStream("src/main/files/iv.txt");
+        out = new Base64OutputStream(baseOut);
+        byte[] iv = cipher.getIV();
+        out.write(iv);
+        out.close();
 
     }
 
+    public static void decipher(String textFile, String symKeyFile, KeyStore ks, String ivFile) throws IOException, KeyStoreException, UnrecoverableKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException {
+        //Open the base64 files
+        FileInputStream baseIn = new FileInputStream("src/main/files/"+textFile);
+        Base64InputStream message = new Base64InputStream(baseIn);
 
-    public static void hashCalculator(byte[] file) throws NoSuchAlgorithmException, IOException {
-        MessageDigest md = MessageDigest.getInstance("AES");
+        baseIn = new FileInputStream("src/main/files/"+symKeyFile);
+        Base64InputStream symKey = new Base64InputStream(baseIn);
+        byte[] symKey_bytes = symKey.readAllBytes();
+
+        baseIn = new FileInputStream("src/main/files/"+ivFile);
+        Base64InputStream iv = new Base64InputStream(baseIn);
+
+        //Certificate creation
+        Enumeration<String> entries = ks.aliases();
+        String alias = entries.nextElement();
+        X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
+
+        //Key pair
+        PublicKey  publicKey = cert.getPublicKey();
+        PrivateKey privateKey = (PrivateKey) ks.getKey(alias, "changeit".toCharArray());
+
+        //
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.UNWRAP_MODE, privateKey);
+
+        Key key = cipher.unwrap( symKey_bytes, "AES", Cipher.SECRET_KEY);
+
+        cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv.readAllBytes()));
+
+        byte[] decoded = cipher.doFinal(message.readAllBytes());
+        FileOutputStream baseOut = new FileOutputStream("src/main/files/deciphered_message.txt");
+        baseOut.write(decoded);
+        baseOut.close();
+
+    }
+
+    public static void hashCalculator(byte[] file) throws NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
         md.update(file);
-        byte[] h = md.digest();
-        prettyPrint(h);
+        md.digest();
+        //prettyPrint(h);
     }
 
-    public static void main(String[] args) throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException {
+    public static void main(String[] args) throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException, KeyStoreException, InvalidAlgorithmParameterException, UnrecoverableKeyException {
         String r = new Scanner(System.in).nextLine();
 
         while (!Objects.equals(r, "exit")){
-            String[] l = r.split("");
+            String[] l = r.split(" ");
 
             if(l.length == 1) {
                 System.out.println("Invalid arguments");
                 break;
             }
 
-            switch (l[1]) {
-                case "-dec" -> System.out.print("fail");//decipher();
-                case "-enc" -> encipher("", "");
+            switch (l[2]) {
+                case "-dec" -> {
+                    KeyStore ks =  KeyStore.getInstance("PKCS12");
+                    ks.load(new FileInputStream("src/main/files/"+ "Carol_1.pfx"),"changeit".toCharArray());
+                    decipher("message.txt", "key.txt", ks, "iv.txt");
+                }
+                case "-enc" -> {
+                    encipher(l[0], "src/main/files/" + l[1]);
+                }
                 default -> System.out.println("Insert a valid command.");
             }
 
             r = new Scanner(System.in).nextLine();
         }
 
-    }
-    private static void prettyPrint(byte[] tag) {
-        for (byte b: tag) {
-            System.out.printf("%02x", b);
-        }
-        System.out.println();
     }
 }
