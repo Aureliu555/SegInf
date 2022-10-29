@@ -59,12 +59,13 @@ public class App {
 
 		SecretKey symKey = keyGen.generateKey();   
 
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 
-        cipher.init( Cipher.WRAP_MODE, symKey);
+        cipher.init( Cipher.WRAP_MODE, pk);
 
-        byte[] encodedKey = cipher.wrap( pk );
+        byte[] encodedKey = cipher.wrap( symKey );
 
+        cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         cipher.init(Cipher.ENCRYPT_MODE, symKey);
 
         byte[] bytes = cipher.doFinal(msg);
@@ -84,6 +85,7 @@ public class App {
         //IV generator
         baseOut = new FileOutputStream("src/main/files/iv.txt");
         out = new Base64OutputStream(baseOut);
+
         byte[] iv = cipher.getIV();
         out.write(iv);
         out.close();
@@ -112,11 +114,12 @@ public class App {
         PrivateKey privateKey = (PrivateKey) ks.getKey(alias, "changeit".toCharArray());
 
         //
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.UNWRAP_MODE, privateKey);
 
         Key key = cipher.unwrap( symKey_bytes, "AES", Cipher.SECRET_KEY);
 
+        cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv.readAllBytes()));
 
         byte[] decoded = cipher.doFinal(message.readAllBytes());
@@ -147,7 +150,7 @@ public class App {
             switch (l[2]) {
                 case "-dec" -> {
                     KeyStore ks =  KeyStore.getInstance("PKCS12");
-                    ks.load(new FileInputStream("src/main/files/"+ "Carol_1.pfx"),"changeit".toCharArray());
+                    ks.load(new FileInputStream("src/main/files/"+ "Alice_1.pfx"),"changeit".toCharArray());
                     decipher("message.txt", "key.txt", ks, "iv.txt");
                 }
                 case "-enc" -> {
