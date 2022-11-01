@@ -24,7 +24,7 @@ public class Exercise6 {
         app();
     }
 
-    public static String pass = "changeit";
+    final static String pass = "changeit";
     public static String mainPath = "src/main/files/";
 
     public static void app() throws KeyStoreException, IOException, InvalidAlgorithmParameterException, UnrecoverableKeyException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, CertificateException, CertPathValidatorException {
@@ -119,7 +119,7 @@ public class Exercise6 {
         PKIXParameters parameters = new PKIXParameters(Collections.singleton(anchor));
         parameters.setRevocationEnabled(false);
         CertPathValidator cpv = CertPathValidator.getInstance("PKIX");
-        PKIXCertPathValidatorResult result = (PKIXCertPathValidatorResult) cpv.validate(cp, parameters);
+        cpv.validate(cp, parameters);
         System.out.println("The certificate was successfully verified");
 
         return certificate;
@@ -133,7 +133,7 @@ public class Exercise6 {
         return keyGen.generateKey();
     }
 
-    public static <Base64InputStream> void decipher(String textFile, String symKeyFile, KeyStore ks, String ivFile) throws IOException, KeyStoreException, UnrecoverableKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException {
+    public static void decipher(String textFile, String symKeyFile, KeyStore ks, String ivFile) throws IOException, KeyStoreException, UnrecoverableKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException {
 
         Base64InputStream message = getInputStreamFromFile(textFile);
 
