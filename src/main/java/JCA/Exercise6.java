@@ -25,7 +25,7 @@ public class Exercise6 {
     }
 
     public static String pass = "changeit";
-    public static String rootPath = "src/main/files/";
+    public static String mainPath = "src/main/files/";
 
     public static void app() throws KeyStoreException, IOException, InvalidAlgorithmParameterException, UnrecoverableKeyException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, CertificateException, CertPathValidatorException {
         String r = printAndReadOption();
@@ -42,12 +42,12 @@ public class Exercise6 {
             switch (l[l.length-1]) {
                 case "-dec" -> {
                     KeyStore ks =  KeyStore.getInstance("PKCS12");
-                    ks.load(new FileInputStream(rootPath + l[0]), pass.toCharArray());
-                    decipher("message.txt", "key.txt", ks, "iv.txt");
+                    ks.load(new FileInputStream(mainPath + l[0]), pass.toCharArray());
+                    decipher("ciphered_message.txt", "ciphered_key.txt", ks, "ciphered_iv.txt");
                     System.out.println("Message successfully decrypted");
                 }
                 case "-enc" -> {
-                    encipher(l[0], rootPath + l[1]);
+                    encipher(l[0], mainPath + l[1]);
                     System.out.println("Message and Key successfully encrypted");
                 }
                 default -> System.out.println("Insert a valid command");
@@ -73,7 +73,7 @@ public class Exercise6 {
 
         PublicKey publicKey = certificate.getPublicKey();
 
-        byte[] msg = Exercise5.messageFromPath(rootPath + file);
+        byte[] msg = Exercise5.messageFromPath(mainPath + file);
 
         SecretKey symKey = getSecretKey();
 
@@ -133,7 +133,7 @@ public class Exercise6 {
         return keyGen.generateKey();
     }
 
-    public static void decipher(String textFile, String symKeyFile, KeyStore ks, String ivFile) throws IOException, KeyStoreException, UnrecoverableKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException {
+    public static <Base64InputStream> void decipher(String textFile, String symKeyFile, KeyStore ks, String ivFile) throws IOException, KeyStoreException, UnrecoverableKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException {
 
         Base64InputStream message = getInputStreamFromFile(textFile);
 
@@ -164,12 +164,12 @@ public class Exercise6 {
     }
 
     public static Base64InputStream getInputStreamFromFile(String fileName) throws FileNotFoundException {
-        FileInputStream baseIn = new FileInputStream(rootPath + fileName);
+        FileInputStream baseIn = new FileInputStream(mainPath + fileName);
         return new Base64InputStream(baseIn);
     }
 
     public static void createFile(String fileName, byte[] data, Boolean base64) throws IOException {
-        FileOutputStream baseOut = new FileOutputStream(rootPath + fileName);
+        FileOutputStream baseOut = new FileOutputStream(mainPath + fileName);
         if (base64) {
             Base64OutputStream out = new Base64OutputStream(baseOut);
             out.write(data);

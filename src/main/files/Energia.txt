@@ -1,4 +1,0 @@
-gcc filename.c -o filename -g
-./filename
-
-
