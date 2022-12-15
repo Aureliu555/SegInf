@@ -21,10 +21,10 @@ app.get('/', function (req, res) {
 // configure TLS handshake
 const options = {
     key: fs.readFileSync('./keyStore.pem'),
-    cert: fs.readFileSync('./certificate.pem'),
-    //ca: fs.readFileSync('<server trustbase PEM (root CA)>'), 
-    requestCert: false, 
-    rejectUnauthorized: false
+    cert: fs.readFileSync('./secure-server.pem'),
+    ca: fs.readFileSync('./CA2.pem'), 
+    requestCert: true, 
+    rejectUnauthorized: true
 };
 
 // Create HTTPS server
