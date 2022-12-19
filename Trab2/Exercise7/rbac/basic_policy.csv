@@ -1,5 +1,8 @@
 p, free, tasks, read
 p, premium, tasks, read
 p, premium, tasks, write
-g, aiurcu, free
-g, fontes, premium
+g, premium, free
+g, admin, premium
+g, joseamsilva100@gmail.com, admin
+g, aiurcu5@gmail.com, free
+g, hfontes54@gmail.com, premium

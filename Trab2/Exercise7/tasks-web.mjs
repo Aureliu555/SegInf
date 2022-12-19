@@ -1,106 +1,86 @@
-import express from 'express';
 import cookieParser from 'cookie-parser';
 import axios from 'axios';
-import FormData from 'form-data';// more info at:
-// https://github.com/auth0/node-jsonwebtoken
-// https://jwt.io/#libraries
+import FormData from 'form-data';
 import jwt from 'jsonwebtoken';
 
-const port = 3001
-
-// system variables where Client credentials are stored
+//-----------------------------------------------------------------------------------------------------------------
 const CLIENT_ID = '725975013772-2gbsl365ntj46gode0hq2jsq1c9vvfbk.apps.googleusercontent.com'
 const CLIENT_SECRET = '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'
-// callback URL configured during Client registration in OIDC provider
-const CALLBACK = 'callback'
+const API_KEY = 'AIzaSyB8Oz7v_H-Ak8-TfDhUBhyzvYUL0OAfo1U'
+const CALLBACK = 'home'
 
-const app = express()
-app.use(cookieParser());
+export default function webFunctions(){
+    return {
+        login: login,
+        loginForm: loginForm,
+        getTasks: getTasks,
+        home: home,
 
-app.get('/', (req, resp) => {
-    resp.send('<a href=/login>Use Google Account</a>')
-})
-
-// More information at:
-//      https://developers.google.com/identity/protocols/OpenIDConnect
-
-app.get('/login', (req, resp) => {
-    resp.redirect(302,
-        // authorization endpoint
-        'https://accounts.google.com/o/oauth2/v2/auth?'
-        
-        // client id
-        + 'client_id='+ CLIENT_ID +'&'
-        
-        // OpenID scope "openid email"
-        + 'scope=openid%20email&'
-        
-        // parameter state is used to check if the user-agent requesting login is the same making the request to the callback URL
-        // more info at https://www.rfc-editor.org/rfc/rfc6749#section-10.12
-        + 'state=value-based-on-user-session&'
-        
-        // responde_type for "authorization code grant"
-        + 'response_type=code&'
-        
-        // redirect uri used to register RP
-        + 'redirect_uri=http://localhost:3001/'+CALLBACK)
-})
-
-app.get('/'+CALLBACK, (req, resp) => {
-    //
-    // TODO: check if 'state' is correct for this session
-    //
-
-    console.log('making request to token endpoint')
-    // content-type: application/x-www-form-urlencoded (URL-Encoded Forms)
-    const form = new FormData();
-    form.append('code', req.query.code);
-    form.append('client_id', CLIENT_ID);
-    form.append('client_secret', CLIENT_SECRET);
-    form.append('redirect_uri', 'http://localhost:3001/'+CALLBACK);
-    form.append('grant_type', 'authorization_code');
-    //console.log(form);
-
-    axios.post(
-        // token endpoint
-        'https://www.googleapis.com/oauth2/v3/token', 
-        // body parameters in form url encoded
-        form,
-        { headers: form.getHeaders() }
-      )
-      .then(function (response) {
-        // AXIOS assumes by default that response type is JSON: https://github.com/axios/axios#request-config
-        // Property response.data should have the JSON response according to schema described here: https://openid.net/specs/openid-connect-core-1_0.html#TokenResponse
-
-        // decode id_token from base64 encoding
-        // note: method decode does not verify signature
-        var jwt_payload = jwt.decode(response.data.id_token)
-        console.log(jwt_payload)
-        const email = jwt_payload.email
-        console.log('AVAILABLE EMAIL:', email)
-
-        // a simple cookie example
-        resp.cookie("DemoCookie", jwt_payload.email)
-        // HTML response with the code and access token received from the authorization server
-        resp.send(
-/*             '<div> callback with code = <code>' + req.query.code + '</code></div><br>' +
-            '<div> client app received access code = <code>' + response.data.access_token + '</code></div><br>' +
-            '<div> id_token = <code>' + response.data.id_token + '</code></div><br>' + */
-            '<div> Hi <b>' + jwt_payload.email + '</b> </div><br>' +
-            '<div> <a href="/premiumForm">Get Premium</a> </div>'+
-            'Go back to <a href="/">Home screen</a>'
-        );
-      })
-      .catch(function (error) {
-        console.log(error)
-        resp.send()
-      });
-})
-
-
-app.listen(port, (err) => {
-    if (err) {
-        return console.log('something bad happened', err)
     }
-    console.log(`Server is listening on ${port}: http://localhost:3001/`)
-})
+    function getTasks(req, rsp){
+        //console.log("REQUEST ---------------->", req.cookies)
+        axios.get(`https://tasks.googleapis.com/tasks/v1/users/@me/lists?access_token=${req.cookies.ACCESS_TOKEN}&key=${API_KEY}`
+        { Authorization: 'Bearer ' + req.cookies.BEARER_TOKEN }
+        )
+
+    }
+
+    function login (req, rsp) { 
+        rsp.send('<a href=/login>Use Google Account</a>')
+    }
+
+    function loginForm(req, rsp){
+        rsp.redirect(302,
+            'https://accounts.google.com/o/oauth2/v2/auth?'
+            + 'client_id='+ CLIENT_ID +'&'
+            + 'scope=openid%20email&'
+            + 'state=value-based-on-user-session&'
+            + 'response_type=code&'
+            + 'redirect_uri=http://localhost:3001/'+CALLBACK)
+    }
+    function home(req, rsp) {
+        //
+        // TODO: check if 'state' is correct for this session
+        //
+        //console.log('making request to token endpoint')
+    
+        const form = new FormData();
+        form.append('code', req.query.code);
+        form.append('client_id', CLIENT_ID);
+        form.append('client_secret', CLIENT_SECRET);
+        form.append('redirect_uri', 'http://localhost:3001/'+CALLBACK);
+        form.append('grant_type', 'authorization_code');
+        axios.post('https://www.googleapis.com/oauth2/v3/token', 
+            // body parameters in form url encoded
+            form,
+            { headers: form.getHeaders() }, 
+          )
+          .then(function (response) {
+            var jwt_payload = jwt.decode(response.data.id_token)
+            //console.log(jwt_payload)
+            //const email = jwt_payload.email
+            //console.log('AVAILABLE EMAIL:', email)
+    
+            // a simple cookie example
+            //console.log("ACCESS TOKEN ------->", response.data.access_token)
+            //console.log("BEARER TOKEN ------->", response.data)
+            rsp.cookie("ACCESS_TOKEN", response.data.access_token)
+            rsp.cookie("BEARER_TOKEN", response.data.id_token)
+            rsp.cookie("USER_EMAIL", jwt_payload.email)
+            // HTML response with the code and access token received from the authorization server
+            rsp.send(
+                '<div> Hi <b>' + jwt_payload.email + '</b> </div><br>' +
+                '<div> <a href="/premium">Get Premium</a> </div>'+
+                '<div> <a href="/tasks">Tasks</a> </div>'+
+                'Go back to <a href="/">Home screen</a>'
+            );
+          })
+          .catch(function (error) {
+            //console.log(error)
+            rsp.send()
+          });
+    }
+
+}
+
+
