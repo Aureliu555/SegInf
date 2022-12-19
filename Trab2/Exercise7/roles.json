@@ -1,0 +1,13 @@
+{
+    "free": {
+        "read": ["tasks"]
+    },
+    "premium": {
+        "inherit": ["tasks"],
+        "write": ["tasks"]
+    },
+    "admin": {
+        "read": ["tasks"],
+        "write": ["tasks"]
+    }
+  }
