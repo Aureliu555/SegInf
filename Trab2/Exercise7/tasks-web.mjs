@@ -1,4 +1,3 @@
-import cookieParser from 'cookie-parser';
 import axios from 'axios';
 import FormData from 'form-data';
 import jwt from 'jsonwebtoken';
@@ -7,7 +6,6 @@ import {newEnforcer} from 'casbin';
 
 const CLIENT_ID = '725975013772-2gbsl365ntj46gode0hq2jsq1c9vvfbk.apps.googleusercontent.com'
 const CLIENT_SECRET = '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'
-const API_KEY = 'AIzaSyB8Oz7v_H-Ak8-TfDhUBhyzvYUL0OAfo1U'
 const CALLBACK = 'home'
 const e = await newEnforcer("./rbac/basic_model.conf", "./rbac/basic_policy.csv");
 
@@ -30,22 +28,27 @@ export default function webFunctions(){
 }
 
     function getTasks(req, rsp){
-            axios.get(`https://tasks.googleapis.com/tasks/v1/lists/${req.cookies.TASKLIST_ID}/tasks`, {headers: { Authorization: 'Bearer ' + req.cookies.ACCESS_TOKEN }})
-        .then(function (resp){
-                let str = ""
-                resp.data.items.forEach((item, idx) => {
-                    str +=  `<div>${idx+1}. ${item.title} </div>` 
-                });
-                rsp.send(str + '<div> <a href="/insertTask"> Add new </a> </div>')
-        })
-        .catch(function (err){
-            rsp.send(err)
-        })
-    }
+        axios.get(`https://tasks.googleapis.com/tasks/v1/users/@me/lists`, {headers: { Authorization: 'Bearer ' + req.cookies.ACCESS_TOKEN }})
+          .then(function (resp){
 
-    async function insertTaskData(taskName) {
-        return taskName
-    } 
+            rsp.cookie("TASKLIST_ID", resp.data.items[0].id)
+            axios.get(`https://tasks.googleapis.com/tasks/v1/lists/${resp.data.items[0].id}/tasks`, {headers: { Authorization: 'Bearer ' + req.cookies.ACCESS_TOKEN }})
+            .then(function (resp2){
+                
+                    let str = ""
+                    resp2.data.items.forEach((item, idx) => {
+                        str +=  `<div>${idx+1}. ${item.title} </div>` 
+                    });
+                    rsp.send(str + '<div> <a href="/insertTask"> Add new </a> </div>')
+            })
+            .catch(function (err){
+                rsp.send(err)
+            })
+            rsp.send();
+
+
+          })
+    }
 
 
     function insertTaskForm(req, rsp) {
@@ -76,10 +79,10 @@ export default function webFunctions(){
             'https://accounts.google.com/o/oauth2/v2/auth?'
             + 'client_id='+ CLIENT_ID +'&'
             + 'scope=openid%20email%20https://www.googleapis.com/auth/tasks&'
-            //+ 'state=value-based-on-user-session&'
             + 'response_type=code&'
             + 'redirect_uri=http://localhost:3001/'+CALLBACK)
     }
+
     function home(req, rsp) {
         const form = new FormData();
         var jwt_payload;
@@ -95,8 +98,14 @@ export default function webFunctions(){
             jwt_payload = jwt.decode(response.data.id_token)
     
             rsp.cookie("ACCESS_TOKEN", response.data.access_token)
-            rsp.cookie("BEARER_TOKEN", response.data.id_token)
             rsp.cookie("USER_EMAIL", jwt_payload.email)
+
+            rsp.send(
+                '<div> Hi <b>' + jwt_payload.email + '</b> </div><br>' +
+                '<div> <a>User Status: '+ role +' </a> </div>'+
+                '<div> <a href="/tasks">See tasks</a> </div>'+
+                'Go back to <a href="/">Home screen</a>'
+            );
 
             role = await checkRole(jwt_payload.email)
           })
@@ -104,20 +113,8 @@ export default function webFunctions(){
             function (error) {
                 rsp.send(error)
           });
-          axios.get(`https://tasks.googleapis.com/tasks/v1/users/@me/lists`, {headers: { Authorization: 'Bearer ' + req.cookies.ACCESS_TOKEN }})
-          .then(function (resp){
-            rsp.cookie("TASKLIST_ID", resp.data.items[0].id)
-            rsp.send(
-                '<div> Hi <b>' + jwt_payload.email + '</b> </div><br>' +
-                '<div> <a>User Status: '+ role +' </a> </div>'+
-                '<div> <a href="/tasks">See tasks</a> </div>'+
-                'Go back to <a href="/">Home screen</a>'
-            );
-          })
-          .catch(function (error){
-                console.log(error)   
-              }
-          )}
+
+        }      
 }
 
 
