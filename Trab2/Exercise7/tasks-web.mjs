@@ -63,13 +63,19 @@ export default function webFunctions(){
         rsp.render('insertTask', {})
     }
 
-    function addTasks(req, rsp){
-        if(!e.enforce(req.cookies.USER_EMAIL, "tasks", "free")){
-            axios.post(`https://tasks.googleapis.com/tasks/v1/lists/${req.cookies.TASKLIST_ID}/tasks`, {headers: { Authorization: 'Bearer ' + req.cookies.ACCESS_TOKEN }})
+    async function addTasks(req, rsp){
+        let notAllowed = await e.hasRoleForUser(req.cookies.USER_EMAIL, "free")
+        if(!notAllowed){
+            axios.post(`https://tasks.googleapis.com/tasks/v1/lists/${req.cookies.TASKLIST_ID}/tasks`, {"title": req.body.tname} ,{headers: { Authorization: 'Bearer ' + req.cookies.ACCESS_TOKEN }})
             .then(function(resp){
-                
-            })}
-        rsp.status(302).redirect('/getPremium')
+                rsp.status(302).redirect('/home')
+            })
+            .catch((err) => {rsp.send(err)})
+        }
+        else {
+            rsp.status(302).redirect('/home')
+        }
+        
     } 
 
     function login (req, rsp) { 
