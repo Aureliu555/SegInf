@@ -2,13 +2,23 @@ import cookieParser from 'cookie-parser';
 import axios from 'axios';
 import FormData from 'form-data';
 import jwt from 'jsonwebtoken';
+import {newEnforcer} from 'casbin';
 
 //-----------------------------------------------------------------------------------------------------------------
 const CLIENT_ID = '725975013772-2gbsl365ntj46gode0hq2jsq1c9vvfbk.apps.googleusercontent.com'
 const CLIENT_SECRET = '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'
 const API_KEY = 'AIzaSyB8Oz7v_H-Ak8-TfDhUBhyzvYUL0OAfo1U'
 const CALLBACK = 'home'
+const e = await newEnforcer("./rbac/basic_model.conf", "./rbac/basic_policy.csv");
+const TASKS = {
+    "kind": "Trivial",
+    "items": [
+        {"kind": "Urgent", "title": "Wash the dishes", "status": "undone"},
+        {"kind": "Not important", "title": "Study more", "status": "undone"}
+    ]
+  }
 
+//-----------------------------------------------------------------------------------------------------------------
 export default function webFunctions(){
     return {
         login: login,
@@ -17,14 +27,33 @@ export default function webFunctions(){
         home: home,
 
     }
-    function getTasks(req, rsp){
-        //console.log("REQUEST ---------------->", req.cookies)
-        axios.get(`https://tasks.googleapis.com/tasks/v1/users/@me/lists?access_token=${req.cookies.ACCESS_TOKEN}&key=${API_KEY}`
-        { Authorization: 'Bearer ' + req.cookies.BEARER_TOKEN }
-        )
 
+    function hasPermission(role, asset, action){
+        return e.enforce(role, asset, action)
+}
+
+    async function checkRole(user){  
+        let roles = await e.getRolesForUser(user)
+        return roles[0]
+        
+}
+
+    function getTasks(req, rsp){
+        axios.get(`https://tasks.googleapis.com/tasks/v1/users/@me/lists?access_token=${req.cookies.ACCESS_TOKEN}&key=${API_KEY}`,
+         {headers: { Authorization: 'Bearer ' + req.cookies.ACCESS_TOKEN, Accept: 'application/json' }})
+        .then(function (resp){
+            resp.render('/tasks')
+        })
+        .catch(function (err){
+            rsp.send(err)
+        })
     }
 
+/*     async function addTasks(tasks, newTask){     
+        tasks.items.push(newTask)
+        return Promise.resolve(newTask)
+    } 
+ */
     function login (req, rsp) { 
         rsp.send('<a href=/login>Use Google Account</a>')
     }
@@ -55,7 +84,7 @@ export default function webFunctions(){
             form,
             { headers: form.getHeaders() }, 
           )
-          .then(function (response) {
+          .then(async function (response) {
             var jwt_payload = jwt.decode(response.data.id_token)
             //console.log(jwt_payload)
             //const email = jwt_payload.email
@@ -67,17 +96,20 @@ export default function webFunctions(){
             rsp.cookie("ACCESS_TOKEN", response.data.access_token)
             rsp.cookie("BEARER_TOKEN", response.data.id_token)
             rsp.cookie("USER_EMAIL", jwt_payload.email)
+
+            let role = await checkRole(jwt_payload.email)
             // HTML response with the code and access token received from the authorization server
             rsp.send(
                 '<div> Hi <b>' + jwt_payload.email + '</b> </div><br>' +
-                '<div> <a href="/premium">Get Premium</a> </div>'+
-                '<div> <a href="/tasks">Tasks</a> </div>'+
+                '<div> <a>User Status: '+ role +' </a> </div>'+
+                '<div> <a href="/tasks">See tasks</a> </div>'+
                 'Go back to <a href="/">Home screen</a>'
             );
           })
-          .catch(function (error) {
+          .catch(
+            function (error) {
             //console.log(error)
-            rsp.send()
+                rsp.send(error)
           });
     }
 
