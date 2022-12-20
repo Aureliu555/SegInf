@@ -10,13 +10,6 @@ const CLIENT_SECRET = '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'
 const API_KEY = 'AIzaSyB8Oz7v_H-Ak8-TfDhUBhyzvYUL0OAfo1U'
 const CALLBACK = 'home'
 const e = await newEnforcer("./rbac/basic_model.conf", "./rbac/basic_policy.csv");
-/* const TASKS = {
-    "kind": "Trivial",
-    "items": [
-        {"kind": "Urgent", "title": "Wash the dishes", "status": "undone"},
-        {"kind": "Not important", "title": "Study more", "status": "undone"}
-    ]
-  } */
 
 
 export default function webFunctions(){
@@ -29,10 +22,6 @@ export default function webFunctions(){
         addTasks: addTasks
 
     }
-
-    function hasPermission(role, asset, action){
-        return e.enforce(role, asset, action)
-}
 
     async function checkRole(user){  
         let roles = await e.getRolesForUser(user)
@@ -105,9 +94,6 @@ export default function webFunctions(){
           .then(async function (response) {
             jwt_payload = jwt.decode(response.data.id_token)
     
-            // a simple cookie example
-            //console.log("ACCESS TOKEN ------->", response.data.access_token)
-            //console.log("BEARER TOKEN ------->", response.data)
             rsp.cookie("ACCESS_TOKEN", response.data.access_token)
             rsp.cookie("BEARER_TOKEN", response.data.id_token)
             rsp.cookie("USER_EMAIL", jwt_payload.email)
