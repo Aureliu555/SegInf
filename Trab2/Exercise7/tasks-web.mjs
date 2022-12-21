@@ -24,29 +24,23 @@ export default function webFunctions(){
     async function checkRole(user){  
         let roles = await e.getRolesForUser(user)
         return roles[0]
-        
-}
+    }   
 
     function getTasks(req, rsp){
+        var str = "";
         axios.get(`https://tasks.googleapis.com/tasks/v1/users/@me/lists`, {headers: { Authorization: 'Bearer ' + req.cookies.ACCESS_TOKEN }})
           .then(function (resp){
-
-            rsp.cookie("TASKLIST_ID", resp.data.items[0].id)
-            axios.get(`https://tasks.googleapis.com/tasks/v1/lists/${resp.data.items[0].id}/tasks`, {headers: { Authorization: 'Bearer ' + req.cookies.ACCESS_TOKEN }})
-            .then(function (resp2){
-                
-                    let str = ""
-                    resp2.data.items.forEach((item, idx) => {
-                        str +=  `<div>${idx+1}. ${item.title} </div>` 
-                    });
-                    rsp.send(str + '<div> <a href="/insertTask"> Add new </a> </div>')
-            })
-            .catch(function (err){
-                rsp.send(err)
-            })
-            rsp.send();
-
-
+                rsp.cookie("TASKLIST_ID", resp.data.items[0].id)
+                axios.get(`https://tasks.googleapis.com/tasks/v1/lists/${resp.data.items[0].id}/tasks`, {headers: { Authorization: 'Bearer ' + req.cookies.ACCESS_TOKEN }})
+                .then(function (resp2){
+                        resp2.data.items.forEach((item, idx) => {
+                            str += `<div>${idx+1}. ${item.title} </div>` 
+                        });
+                        rsp.send(str + '<div> <a href="/insertTask"> Add new </a> </div>')
+                })
+                .catch(function (err){
+                    rsp.send(err)
+                })
           })
     }
 
@@ -60,14 +54,13 @@ export default function webFunctions(){
         if(!notAllowed){
             axios.post(`https://tasks.googleapis.com/tasks/v1/lists/${req.cookies.TASKLIST_ID}/tasks`, {"title": req.body.tname} ,{headers: { Authorization: 'Bearer ' + req.cookies.ACCESS_TOKEN }})
             .then(function(resp){
-                rsp.status(302).redirect('/home')
+                rsp.status(302).redirect('/tasks')
             })
             .catch((err) => {rsp.send(err)})
         }
         else {
-            rsp.status(302).redirect('/home')
+            rsp.status(302).redirect('/tasks')
         }
-        
     } 
 
     function login (req, rsp) { 
@@ -85,8 +78,6 @@ export default function webFunctions(){
 
     function home(req, rsp) {
         const form = new FormData();
-        var jwt_payload;
-        var role;
         form.append('code', req.query.code);
         form.append('client_id', CLIENT_ID);
         form.append('client_secret', CLIENT_SECRET);
@@ -95,10 +86,12 @@ export default function webFunctions(){
         axios.post('https://www.googleapis.com/oauth2/v3/token', 
             form, { headers: form.getHeaders() }, )
           .then(async function (response) {
-            jwt_payload = jwt.decode(response.data.id_token)
+            const jwt_payload = jwt.decode(response.data.id_token)
     
             rsp.cookie("ACCESS_TOKEN", response.data.access_token)
             rsp.cookie("USER_EMAIL", jwt_payload.email)
+
+            const role = await checkRole(jwt_payload.email)
 
             rsp.send(
                 '<div> Hi <b>' + jwt_payload.email + '</b> </div><br>' +
@@ -106,8 +99,6 @@ export default function webFunctions(){
                 '<div> <a href="/tasks">See tasks</a> </div>'+
                 'Go back to <a href="/">Home screen</a>'
             );
-
-            role = await checkRole(jwt_payload.email)
           })
           .catch(
             function (error) {
